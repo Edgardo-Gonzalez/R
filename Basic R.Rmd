@@ -1,0 +1,62 @@
+---
+title: "R Basics"
+author: "Ed Gonzalez"
+date: "2023-01-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r echo=FALSE}
+install.packages("carData", repos = "http://cran.us.r-project.org")
+library(carData)
+```
+```{r}
+summary(TitanicSurvival)
+```
+# Using '?' to find information about a function and a quick method of creating a table with specific variables
+```{r}
+?table()
+table(TitanicSurvival$passengerClass, TitanicSurvival$survived)
+```
+
+# Creating a histogram and boxplot using Base R functions
+```{r}
+hist(TitanicSurvival$age, 
+     main = "Titanic Survival Histogram",
+     xlab = "Age", 
+     ylab = "Number of deaths")
+```
+
+* * *
+
+```{r}
+boxplot(age ~ survived, data = TitanicSurvival, 
+        main = "Titanic Survival",
+        xlab = "Age", 
+        ylab = "Survived", horizontal = TRUE)
+```
+
+# Downloading a dataset and assigning variable names
+```{r eval = TRUE}
+abalone.url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data"
+abalone.data <- read.csv(abalone.url, header=FALSE)
+names(abalone.data) <- c("sex", "length", "diameter",
+                         "height", "weight.whole", "weight.shucked",
+                         "weight.viscera", "weight.shell", "rings")
+```
+# Functions that can identify the information contained within the data set, as well as creating variables
+```{r}
+class(abalone.data)
+typeof("diameter")
+summary(abalone.data$diameter[abalone.data$rings])
+mean(abalone.data$diameter[abalone.data$sex == "F"])
+
+x <- abalone.data$rings
+x_t <- t(abalone.data$rings)
+y <-abalone.data$diameter
+```
+# Doing some arithmetic with the variables we created
+```{r}
+solve(x_t%*%x)*(x_t%*%y)
+```

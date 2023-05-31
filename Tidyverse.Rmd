@@ -1,0 +1,146 @@
+---
+title: "Tidyverse & ggplot"
+author: "Ed Gonzalez"
+output: pdf_document
+---
+
+## I am using a dataset collected by a professor on my campus which recorded physical attributes about students
+
+```{r, echo=TRUE}
+install.packages("readr", repos = "http://cran.us.r-project.org")
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+
+library(readr)
+library(tidyverse)
+
+KimData <- read_csv("Downloads/Clean-KimData.csv")
+```
+
+## Utilizing some dplyr functions here!
+
+```{r}
+# Demonstrating the | operator when filtering to display male or freshman students as well as the usage of %>%
+FreshOrMales <-KimData %>% 
+  filter(Semester < 2 | Gender == "M")
+
+# Another demonstration of piping to create a tibble with selected variables 
+KimDataPhysical <- KimData %>%
+  select(Semester, Gender, `Shoe Size`, Height, Weight, Handed)
+head(KimDataPhysical)
+
+# Using mutate() to create new variables in the data set
+KimDataPhysical <- KimDataPhysical %>% 
+  mutate(Year = round(Semester/2))
+head(KimDataPhysical)
+
+KimDataPhysical <- KimDataPhysical %>% 
+  mutate(BMI = 703 * (Weight/Height^2))
+head(KimDataPhysical)
+
+KimDataPhysical <- KimDataPhysical %>% 
+  mutate(Obese = BMI >= 30)
+head(KimDataPhysical)
+```
+
+## Using group_by() and summarize() functions
+
+```{r}
+KimDataPhysical %>% group_by(Year) %>%
+  summarize( Year_BMI = mean(BMI, na.rm=TRUE))
+```
+
+## Finding the average shoe size, but then correcting for those (like me) that have a size 16 shoe
+
+```{r}
+shoe_size_Kim <- KimDataPhysical %>%
+  summarize("Total number" = n(), "Average Shoe Size" = mean(`Shoe Size`, na.rm=TRUE))
+
+shoe_size_Kim	
+```
+
+```{r}
+regular_shoe_sizes <- KimDataPhysical %>% filter(`Shoe Size` < 16) %>% 
+  summarize(count = n(), mean = mean(`Shoe Size`, na.rm = TRUE))
+
+regular_shoe_sizes
+```
+
+# More dplyr! This time I'm poking around everyone's favorite data set, the Ames housing data set.
+
+```{r}
+install.packages("AmesHousing", repos = "http://cran.us.r-project.org")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+
+library(AmesHousing)      
+library(dplyr)
+
+ames<-make_ames() 
+
+Remodeled <- ames$Year_Built != ames$Year_Remod_Add
+
+set.seed(248)
+ames.500 <- sample_n(ames, 500)  
+ames.500
+
+
+ames.500$Remodeled <- ames.500$Year_Built != ames.500$Year_Remod_Add
+ames.500$Remodeled
+
+t.test(Sale_Price ~ Remodeled, data = ames.500)
+
+plot(x = ames.500$Year_Built, y = ames.500$Year_Remod_Add)
+```
+
+## Running simulated data sets
+
+```{r}
+sample_1 <- rnorm(50,15,8)
+sample_2 <- rnorm(50,17,8)
+
+t.test(sample_1, sample_2)
+```
+
+## Increasing the sample size to see how it affects the p-value and our confidence in the results
+
+```{r}
+sample_1 <- rnorm(100,15,8)
+sample_2 <- rnorm(100,17,8)
+
+t.test(sample_1, sample_2)
+```
+
+```{r}
+sample_1 <- rnorm(200,15,8)
+sample_2 <- rnorm(200,17,8)
+
+t.test(sample_1, sample_2)
+```
+
+## Finding the linear regression between the sale price and square footage and the year it was built.
+
+```{r}
+fit.original <- lm(Sale_Price ~ Year_Built + First_Flr_SF, data=ames)
+
+fit.original
+
+summary(fit.original)$adj.r.squared
+```
+
+```{r}
+fit.updated <- lm(Sale_Price ~ Lot_Area + Overall_Qual, data=ames)
+
+summary(fit.updated)$adj.r.squared
+
+```
+
+# How about some ggplot?
+
+```{r}
+ggplot(ames, aes(x = Sale_Price, y = Overall_Cond)) + geom_boxplot()
+```
+
+```{r}
+ggplot(ames, aes(x = Overall_Cond, y = Sale_Price, color = Overall_Qual)) + geom_jitter( width = 0) + theme(axis.text.x = element_text(angle=30)) + labs(x = "Overall Condition of House", y = "Final Sale Price")
+```
+
+By adding a legend and color to the data points, we can see how the data is distributed in relation to its quality and sale price. This is where I first started to really learn ggplot. Later on I start using the piping method to better organize my code and improve replicability.

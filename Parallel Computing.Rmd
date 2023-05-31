@@ -1,0 +1,134 @@
+---
+title: "Parallel Computing"
+author: "Ed Gonzalez"
+date: "2022-12-01"
+output:
+  pdf_document: default
+  html_document: default
+---
+# I had to move onto the desktop version of R Studio for this as the cloud-based program did not allow me to use more than 0.5GB of RAM
+
+```{r}
+install.packages("readr", repos = "http://cran.us.r-project.org")
+library(readr)
+
+airlines09 <- read_csv("/Users/ed/Downloads/2009.csv")
+```
+
+# Installing some packages for tidying the data set and for parallel computing 
+```{r}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+install.packages("sparklyr", repos = "http://cran.us.r-project.org")
+install.packages("multidplyr", repos = "http://cran.us.r-project.org")
+
+library(tidyverse)
+library(sparklyr)
+library(multidplyr)
+library(dplyr)
+```
+
+# Timing some code using dplyr that finds the mean arrival delay of each carrier
+```{r}
+system.time(
+  airline_delay <- airlines09 %>%
+  group_by(OP_CARRIER) %>% 
+  summarize(mean = mean(ARR_DELAY, na.rm = TRUE)) %>% 
+    print())
+```
+
+# Same as before, but now utilizing the for %do% process and timing it
+```{r}
+library(foreach)
+
+carriers<-split(airlines09,airlines09$OP_CARRIER)
+
+system.time(
+  {foreach(i=carriers,.combine=c) %do%
+  mean(i$ARR_DELAY, na.rm = T) %>% 
+  print()}
+)
+```
+
+# Using the doParallel package where I essentially just change the %do% to %dopar% and assign some cores
+```{r}
+library(doParallel)
+n.cores <- detectCores() - 1
+registerDoParallel(n.cores)
+
+system.time({
+  foreach(i=carriers,.combine=c) %dopar%
+  mean(i$ARR_DELAY, na.rm = T) %>% 
+  print()}
+)
+
+```
+
+# Same procee utilizng the multidplyr package
+```{r}
+library(multidplyr)
+cl <- new_cluster(7)
+
+system.time(
+  {
+  airline_delay <- airlines09 %>%
+    group_by(OP_CARRIER) %>%
+    partition(cl) %>% 
+    summarize(mean = mean(ARR_DELAY, na.rm = TRUE)) %>% 
+    collect() %>% 
+    print()}
+  )
+```
+
+# Creating a table with times for each computation
+```{r}
+tidyverse.time <- c(0.128, 0.045, 0.233)
+foreach.do.time <- c(0.032, 0.021, 0.052)
+foreach.dopar.time <- c(0.004, 0.025, 0.085)
+multidplyr.time <- c(3.73, 1.834, 7.336)
+
+rbind(tidyverse.time, foreach.do.time, foreach.dopar.time, multidplyr.time)
+      
+
+```
+
+# Using dplyr to select for specific variables and performing a summary function to find the mean of arrival delay, counting unique instances, and finding a linear regression model between arrival delay and taxi in/out times
+```{r}
+system.time({
+  taxi.times <- airlines09 %>% 
+  select(ORIGIN, DEST, OP_CARRIER, ARR_DELAY, TAXI_IN, TAXI_OUT) %>% 
+  drop_na() %>% 
+  group_by(ORIGIN, DEST, OP_CARRIER) %>% 
+  summarise(Count = n(),Mean = mean(ARR_DELAY, na.rm = T),
+            fit = summary(lm(ARR_DELAY ~ TAXI_IN + TAXI_OUT))$r.squared)
+  print(head(taxi.times))
+})
+```
+
+# Doing the same as before but utilizing multidplyr functions to compare times
+```{r}
+system.time({
+  taxi.times2 <- airlines09 %>% 
+  select(ORIGIN, DEST, OP_CARRIER, ARR_DELAY, TAXI_IN, TAXI_OUT) %>% 
+  drop_na() %>% 
+  group_by(ORIGIN, DEST, OP_CARRIER) %>%
+    partition(cl) %>% 
+    summarise(Count = dplyr::n(),Mean = mean(ARR_DELAY, na.rm = T),
+            fit = summary(lm(ARR_DELAY ~ TAXI_IN + TAXI_OUT))$r.squared)
+  print(head(taxi.times2))
+})
+```
+
+# Using ggplot2 package to create a scatter plot
+```{r}
+library(ggplot2)
+
+scatter.p <- ggplot2::ggplot(taxi.times, aes(Count, fit))
+
+scatter.p + geom_point() + theme_classic()
+```
+# Creating boxplots for each individual airline
+```{r}
+box.p <- ggplot2::ggplot(taxi.times, aes(OP_CARRIER, fit))
+
+box.p+geom_boxplot(outlier.shape = NA ) + theme_classic()
+```

@@ -1,0 +1,69 @@
+---
+title: "Tidyverse and ggplot (cont.)"
+author: "Ed Gonzalez"
+output: pdf_document
+---
+```{r}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+install.packages("nycflights13", repos = "http://cran.us.r-project.org")
+
+library(tidyverse)
+library(lubridate)
+library(nycflights13)
+
+nyc <- nycflights13::flights
+```
+
+# A little messy, but here I explain what each part of the coding does using the dplyr functions and then creating a new variable within the code where I calculate the arrival 
+
+```{r}
+nycJan <- nyc %>% # this assigns the following code to a variable
+  filter(month == 1) %>% # selecting only for the months that have "1" listed
+  filter(dest == "ORD" | dest == "DSM" | dest == "STL" | dest =="MCI" | dest == "MDW") %>% # this allows us to only see data from the listed airports
+  mutate(dep_time = dep_time/100) %>% #this transforms the times into a more recognizable format by adding a decimal
+  unite("dep", c(year, month, day, dep_time), sep="/", remove = FALSE) %>% #unite is merging the variables listed and adding a slash for a separator 
+  mutate(dep = ymd_hm(dep, tz = "America/New_York", quiet= TRUE)) %>% #this arranges the date and time in the designated format and also assigns a timezone
+  filter(!is.na(dep))
+
+nycJan
+```
+
+
+```{r}
+nycJan <- nyc %>% 
+  filter(month == 1) %>% 
+  filter(dest == "ORD" | dest == "DSM" | dest == "STL" | dest == "MCI" | dest == "MDW") %>% 
+  mutate(dep_time = dep_time/100) %>% 
+  unite("dep", c(year, month, day, dep_time), sep ="/", remove = FALSE) %>% 
+  mutate(dep = ymd_hm(dep, tz = "America/New_York", quiet = TRUE)) %>%
+  filter(!is.na(dep)) %>% 
+  mutate(arr_time = arr_time/100) %>% 
+  unite("arr", c(year, month, day, arr_time), sep ="/", remove = FALSE) %>% 
+  mutate(arr = ymd_hm(arr, tz = "America/New_York", quiet = TRUE)) %>%
+  filter(!is.na(arr)) %>% 
+  mutate(duration = dep - arr)
+```
+# This is an example of how I learned to use ggplot in a more concise way. Seeing a lot of personal growth 
+```{r}
+Jan_plot <- ggplot(nycJan, aes(air_time, duration))
+
+Jan_plot + geom_point()
+```
+# A quick demo of the stringr package using everyone's favorite, Ames Housing data!
+```{r}
+install.packages("AmesHousing", repos = "http://cran.us.r-project.org")
+library(AmesHousing)
+
+Ames <- make_ordinal_ames()
+AmesNeigh <-  fct_unique(Ames$Neighborhood)
+
+str_count(AmesNeigh, "[B|b]")
+
+str_count(AmesNeigh, "_")
+```
+# Demo of the purr package where I can create a boxplot with variables that have the word "Area" within it
+```{r}
+Ames %>% 
+  select(ends_with("Area")) %>% 
+  boxplot(outline = FALSE)
+```

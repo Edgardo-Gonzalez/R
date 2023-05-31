@@ -1,0 +1,35 @@
+---
+title: "Joins"
+author: "Ed Gonzalez"
+output: pdf_document
+---
+
+```{r}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(tidyverse)
+
+baseball01 <- read_csv("/Users/ed/Downloads/baseball01.csv")
+
+baseball02 <- read_csv("/Users/ed/Downloads/baseball02.csv")
+```
+
+```{r}
+ljbaseball <- left_join(baseball01, baseball02)
+ljbaseball
+```
+With the left_join function, we get the above results. We now have a table with 
+all of the Names from baseball01, but with the added variables in baseball02
+with "NA" in cells that didn't contain any information.
+```{r}
+ijbaseball <- inner_join(baseball01, baseball02)
+ijbaseball
+```
+Inner_join function grabs the Names that baseball01/02 have in common. In this
+case, we have Tinker and Cobb as the only rows as they contain information for 
+all of the variables in both data sets. 
+```{r}
+fjbaseball <- full_join(baseball01, baseball02)
+fjbaseball
+```
+With full_join, it is fairly self-explanatory as it joins the data sets entirely
+and inserts "NA" in any cells that doesn't contain data from either set.
